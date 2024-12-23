@@ -29,6 +29,11 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
+    // Validate email and password
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required' });
+    }
+
     try {
         // Check if user exists
         const user = await User.findOne({ email });
@@ -44,16 +49,24 @@ router.post('/login', async (req, res) => {
 
         // Generate JWT
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-            expiresIn: process.env.JWT_EXPIRES_IN,
+            expiresIn: process.env.JWT_EXPIRES_IN || '1h', 
         });
 
+        // Return user (excluding sensitive fields)
         res.status(200).json({
             message: 'Login successful',
             token,
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email,
+            },
         });
     } catch (err) {
+        console.error(err); // Log the error for debugging
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 });
+
 
 module.exports = router;

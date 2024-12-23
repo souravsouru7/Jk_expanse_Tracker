@@ -8,7 +8,7 @@ const PageWrapper = ({ children }) => {
     // Simulate page load - replace with your actual loading logic
     const timer = setTimeout(() => {
       setIsLoading(false);
-    },3000); // Adjust timing as needed
+    },1000); // Adjust timing as needed
 
     return () => clearTimeout(timer);
   }, []);
