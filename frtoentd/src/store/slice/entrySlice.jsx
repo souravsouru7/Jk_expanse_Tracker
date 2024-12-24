@@ -5,7 +5,6 @@ const API = axios.create({
   baseURL: 'http://localhost:3000/',
 });
 
-
 const validateEntry = (entry) => {
   return {
     ...entry,
@@ -18,15 +17,24 @@ const validateEntry = (entry) => {
 
 export const fetchEntries = createAsyncThunk(
   'entries/fetchEntries',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, getState }) => {
     try {
       const user = localStorage.getItem('user');
-      if (!user) throw new Error('User information not found in local storage');
+      if (!user) throw new Error('User information not found');
 
       const { id: userId } = JSON.parse(user);
-      if (!userId) throw new Error('User ID not found');
+      const selectedProject = getState().projects.selectedProject;
 
-      const response = await API.get('/entries', { params: { userId } });
+      if (!selectedProject) {
+        return []; 
+      }
+
+      const response = await API.get('/entries', { 
+        params: { 
+          userId,
+          projectId: selectedProject._id 
+        } 
+      });
       return response.data.map(entry => validateEntry(entry));
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch entries');
@@ -36,13 +44,22 @@ export const fetchEntries = createAsyncThunk(
 
 export const addEntry = createAsyncThunk(
   'entries/addEntry',
-  async (entry, { rejectWithValue }) => {
+  async (entry, { rejectWithValue, getState }) => {
     try {
-      const validatedEntry = validateEntry(entry);
+      const { projects } = getState();
+      const validatedEntry = {
+        ...validateEntry(entry),
+        projectId: entry.projectId || projects.selectedProject?._id
+      };
+      
+      if (!validatedEntry.projectId) {
+        throw new Error('Project ID is required');
+      }
+
       const { data } = await API.post('/entries', validatedEntry);
       return validateEntry(data);
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to add entry');
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );

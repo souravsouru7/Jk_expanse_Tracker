@@ -6,7 +6,9 @@ let route= require("./routes/auth")
 const bodyParser = require('body-parser');
 const entryRoutes = require('./routes/entries');
 const balanceSheetRoutes = require('./routes/balanceSheet');
-const analyticsRoutes = require('./routes/analytics'); // Add this line
+const analyticsRoutes = require('./routes/analytics');
+const projectRoutes = require('./routes/projects');
+// Add this line
 let cors=require("cors");
 dotenv.config();
 connectionDB()
@@ -21,6 +23,7 @@ app.use('/auth', route);
 app.use('/entries', entryRoutes);
 app.use('/balance-sheet', balanceSheetRoutes);
 app.use('/analytics', analyticsRoutes);
+app.use('/api/projects', projectRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

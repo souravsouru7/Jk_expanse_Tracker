@@ -1,24 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { addEntry, updateEntry } from '../../store/slice/entrySlice';
+import { fetchProjects } from '../../store/slice/projectSlice';
 
 const EntryForm = ({ entry, onClose }) => {
   const dispatch = useDispatch();
+  const selectedProject = useSelector(state => state.projects.selectedProject);
+  const projects = useSelector(state => state.projects.projects);
   const [formData, setFormData] = useState(
-    entry || { type: 'Income', amount: '', category: '', description: '' }
+    entry || { 
+      type: 'Income', 
+      amount: '', 
+      category: '', 
+      description: '',
+      projectId: selectedProject?._id || ''
+    }
   );
   
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (user?._id || user?.id) {
+      dispatch(fetchProjects(user?._id || user?.id));
+    }
+  }, [dispatch]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    if (!selectedProject) {
+      setError('Please select a project first');
+      return;
+    }
 
     try {
-      // Get user data and validate
       const userStr = localStorage.getItem('user');
-      console.log('User data from localStorage:', userStr);
-      
       const user = JSON.parse(userStr);
       const userId = user?._id || user?.id;
       
@@ -27,17 +43,21 @@ const EntryForm = ({ entry, onClose }) => {
         return;
       }
 
-      // Prepare entry data
+      if (!formData.projectId) {
+        setError('Please select a project first');
+        return;
+      }
+
       const entryData = {
         ...formData,
-        userId,
+        projectId: selectedProject._id, // Add projectId to the entry
+        userId: user?._id || user?.id,
         amount: parseFloat(formData.amount),
         date: new Date().toISOString()
       };
 
       console.log('Submitting entry data:', entryData);
 
-      // Handle update or create
       if (entry) {
         await dispatch(updateEntry({ id: entry._id, updates: entryData })).unwrap();
       } else {
@@ -51,22 +71,49 @@ const EntryForm = ({ entry, onClose }) => {
     }
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   return (
     <form
       onSubmit={handleSubmit}
       className="space-y-4 p-6 bg-white rounded-lg shadow-lg transform transition-all duration-300 hover:shadow-xl"
     >
       {error && (
-        <div className="text-red-500 text-sm mb-4">
+        <div className="text-red-500 text-sm mb-4 p-2 bg-red-50 rounded border border-red-200">
           {error}
         </div>
       )}
 
       <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">Project</label>
+        <select
+          name="projectId"
+          value={formData.projectId}
+          onChange={handleInputChange}
+          required
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+        >
+          <option value="">Select a project</option>
+          {projects.map(project => (
+            <option key={project._id} value={project._id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">Type</label>
         <select
+          name="type"
           value={formData.type}
-          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+          onChange={handleInputChange}
           className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 transition-all duration-200"
         >
           <option value="Income">Income</option>
@@ -78,8 +125,9 @@ const EntryForm = ({ entry, onClose }) => {
         <label className="block text-sm font-medium text-gray-700">Amount</label>
         <input
           type="number"
+          name="amount"
           value={formData.amount}
-          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+          onChange={handleInputChange}
           required
           min="0"
           step="0.01"
@@ -91,8 +139,9 @@ const EntryForm = ({ entry, onClose }) => {
         <label className="block text-sm font-medium text-gray-700">Category</label>
         <input
           type="text"
+          name="category"
           value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          onChange={handleInputChange}
           required
           className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 transition-all duration-200"
         />
@@ -102,18 +151,28 @@ const EntryForm = ({ entry, onClose }) => {
         <label className="block text-sm font-medium text-gray-700">Description</label>
         <input
           type="text"
+          name="description"
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={handleInputChange}
           className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 transition-all duration-200"
         />
       </div>
 
-      <button
-        type="submit"
-        className="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 transform transition-all duration-200 hover:scale-105"
-      >
-        {entry ? 'Update' : 'Save'}
-      </button>
+      <div className="flex space-x-4 mt-6">
+        <button
+          type="submit"
+          className="flex-1 bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 transform transition-all duration-200 hover:scale-105"
+        >
+          {entry ? 'Update' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 bg-gray-200 text-gray-700 p-2 rounded-md hover:bg-gray-300 transform transition-all duration-200 hover:scale-105"
+        >
+          Cancel
+        </button>
+      </div>
     </form>
   );
 };

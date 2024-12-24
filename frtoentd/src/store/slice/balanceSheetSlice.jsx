@@ -7,8 +7,23 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
 export const fetchBalanceSummary = createAsyncThunk(
   'balanceSheet/fetchSummary',
-  async (userId) => {
+  async (userId, { getState }) => {
+    const selectedProject = getState().projects.selectedProject;
+    if (!selectedProject) return { totalIncome: 0, totalExpenses: 0, netBalance: 0 };
+
     const response = await axios.get(`${API_URL}/balance-sheet/summary`, {
+      params: {
+        userId,
+        projectId: selectedProject._id
+      }
+    });
+    return response.data;
+  }
+);
+export const fetchOverallSummary = createAsyncThunk(
+  'balanceSheet/fetchOverallSummary',
+  async (userId) => {
+    const response = await axios.get(`${API_URL}/balance-sheet/overall-summary`, {
       params: { userId }
     });
     return response.data;
@@ -17,9 +32,16 @@ export const fetchBalanceSummary = createAsyncThunk(
 
 export const fetchMonthlyBreakdown = createAsyncThunk(
   'balanceSheet/fetchMonthly',
-  async ({ userId, year }) => {
+  async ({ userId, year }, { getState }) => {
+    const selectedProject = getState().projects.selectedProject;
+    if (!selectedProject) return [];
+
     const response = await axios.get(`${API_URL}/balance-sheet/monthly`, {
-      params: { userId, year }
+      params: { 
+        userId,
+        year,
+        projectId: selectedProject._id 
+      }
     });
     return response.data;
   }
@@ -27,9 +49,15 @@ export const fetchMonthlyBreakdown = createAsyncThunk(
 
 export const fetchYearlyBreakdown = createAsyncThunk(
   'balanceSheet/fetchYearly',
-  async (userId) => {
+  async (userId, { getState }) => {
+    const selectedProject = getState().projects.selectedProject;
+    if (!selectedProject) return [];
+
     const response = await axios.get(`${API_URL}/balance-sheet/yearly`, {
-      params: { userId }
+      params: { 
+        userId,
+        projectId: selectedProject._id 
+      }
     });
     return response.data;
   }
@@ -37,12 +65,11 @@ export const fetchYearlyBreakdown = createAsyncThunk(
 const balanceSheetSlice = createSlice({
   name: 'balanceSheet',
   initialState: {
-    summary: {
-      totalIncome: 0,
-      totalExpenses: 0,
-      netBalance: 0,
-      loading: false,
-      error: null,
+    summary: { totalIncome: 0, totalExpenses: 0, netBalance: 0 },
+    monthlyData: [],
+    overallSummary: {
+      overall: { totalIncome: 0, totalExpenses: 0, netBalance: 0 },
+      projectWise: []
     },
     monthly: {
       data: [],
@@ -98,6 +125,17 @@ const balanceSheetSlice = createSlice({
       .addCase(fetchYearlyBreakdown.rejected, (state, action) => {
         state.yearly.loading = false;
         state.yearly.error = action.error.message;
+      })
+      .addCase(fetchOverallSummary.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchOverallSummary.fulfilled, (state, action) => {
+        state.loading = false;
+        state.overallSummary = action.payload;
+      })
+      .addCase(fetchOverallSummary.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
       });
   },
 });
